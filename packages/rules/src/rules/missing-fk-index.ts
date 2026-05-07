@@ -22,12 +22,12 @@ interface FkAddition {
 export const missingFkIndexRule: Rule = {
   id: RULE_IDS.MISSING_FK_INDEX,
   title: 'MISSING FK INDEX',
-  severity: 'medium',
+  severity: 'low',
   description:
-    'Foreign key constraints without a backing index cause slow joins and full-table scans on cascading updates/deletes.',
+    'Foreign key constraints without an explicit backing index. MySQL InnoDB auto-creates one, but it may be suboptimal. PostgreSQL never auto-creates FK indexes — add one explicitly.',
   recommendation:
     'Create an index on the FK column in the same migration. Consider composite indexes if the FK is queried alongside other columns.',
-  scoreImpact: 3,
+  scoreImpact: 1,
 
   detect(statements: SqlStatement[]): RuleFinding[] {
     const fkAdditions = collectFkAdditions(statements);

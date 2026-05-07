@@ -6,23 +6,14 @@ import {
   type AlterTableNode,
 } from '@prismaguard/parser';
 
-const REWRITE_TRIGGERING_TYPES = new Set([
-  'enum',
-  'json',
-  'text',
-  'mediumtext',
-  'longtext',
-  'blob',
-  'mediumblob',
-  'longblob',
-]);
-
 /**
  * Detects ALTER TABLE operations that frequently force a full table copy:
  *   - changing primary key
- *   - converting between certain types (TEXT ↔ VARCHAR, ENUM modifications)
  *   - changing character set / collation
  *   - changing storage engine
+ *
+ * Type changes (MODIFY/CHANGE COLUMN) are intentionally excluded here —
+ * ALTER_COLUMN_TYPE already covers them. Duplicating here inflates the score.
  */
 export const tableRewriteRule: Rule = {
   id: RULE_IDS.TABLE_REWRITE,
@@ -94,15 +85,6 @@ function collectRewriteReasons(raw: string, node: AlterTableNode | null): string
     }
     if (action === 'add' && (resource === 'primary key' || constraintType === 'PRIMARY KEY')) {
       reasons.push('primary key addition');
-    }
-
-    const dataType = expr.definition?.dataType?.toLowerCase();
-    if (
-      dataType &&
-      REWRITE_TRIGGERING_TYPES.has(dataType) &&
-      (action === 'modify' || action === 'change')
-    ) {
-      reasons.push(`type change to ${dataType.toUpperCase()}`);
     }
   }
 

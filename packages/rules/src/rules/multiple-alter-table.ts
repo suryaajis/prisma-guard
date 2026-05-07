@@ -1,7 +1,10 @@
 import { RULE_IDS, type Rule, type RuleFinding, type SqlStatement } from '@prismaguard/shared';
 import { getAlterTableName, getNode, isAlterTable } from '@prismaguard/parser';
 
-const THRESHOLD = 2;
+// Prisma commonly emits 2–4 ALTER TABLE statements per migration for a single
+// schema change. Fire only when the count is high enough to represent a real
+// merge opportunity rather than normal Prisma codegen output.
+const THRESHOLD = 4;
 
 export const multipleAlterTableRule: Rule = {
   id: RULE_IDS.MULTIPLE_ALTER_TABLE,
