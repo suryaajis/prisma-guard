@@ -10,28 +10,32 @@ risky operations visible in PRs and CI before they ever hit a production
 table.
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━ PrismaGuard Report ━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PrismaGuard Report
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Migration: 202605071200_add_booking_status
+File:      prisma/migrations/202605071200_add_booking_status/migration.sql
 Score:     8.2 / 10
 Level:     HIGH
 
 Detected Risks:
 
-1. DROP COLUMN                                       CRITICAL
-   Statement drops column "legacyEmail" from table "User".
-   → Deploy code that no longer references the column first.
+1. DROP COLUMN   CRITICAL
+   Statement drops column "legacyEmail" from table "User". Data in this column will be lost.
+   → Deploy code that no longer references the column first. Wait one release cycle, then drop.
 
-2. ALTER COLUMN TYPE                                 HIGH
-   May rewrite the table and lock writes.
-   → Use a shadow column strategy.
+2. ALTER COLUMN TYPE   HIGH
+   Statement alters column "status" on table "Bookings" to type ENUM. This type change likely
+   requires a full table rewrite and write lock.
+   → Use a shadow column strategy: add a new column, dual-write, backfill in batches, swap.
 
 Recommendations:
-  • Deploy code that no longer references the column first.
-  • Use a shadow column strategy.
+  • Deploy code that no longer references the column first. Wait one release cycle, then drop.
+  • Use a shadow column strategy: add a new column, dual-write, backfill in batches, swap.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✖ HIGH risk migration. Review carefully before deployment.
-━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ## Why
@@ -52,11 +56,11 @@ staging and locked production for 90 seconds. PrismaGuard codifies the
 
 ```bash
 # one-shot
-npx prismaguard analyze prisma/migrations
+npx prismaguards analyze prisma/migrations
 
 # project dev dependency
-pnpm add -D prismaguard
-npm install --save-dev prismaguard
+pnpm add -D prismaguards
+npm install --save-dev prismaguards
 ```
 
 Requires Node.js **20+**.
@@ -69,6 +73,9 @@ prismaguard analyze prisma/migrations
 
 # analyze a single file
 prismaguard analyze prisma/migrations/202605071200_add_booking_status/migration.sql
+
+# generate an HTML report file
+prismaguard analyze prisma/migrations --report report.html
 
 # JSON output for CI tooling
 prismaguard analyze prisma/migrations --json
@@ -93,6 +100,7 @@ prismaguard analyze prisma/migrations --fail-on MEDIUM
 | Flag                   | Description                                                                   |
 | ---------------------- | ----------------------------------------------------------------------------- |
 | `--json`               | Emit a JSON report instead of formatted terminal output                       |
+| `--report <path>`      | Write a self-contained HTML report to the given file path                     |
 | `--silent`             | Suppress output. Pair with `--fail-on-high-risk` for exit-code-only CI checks |
 | `--fail-on-high-risk`  | Exit 1 if any migration is HIGH risk (default)                                |
 | `--fail-on <level>`    | Set the threshold explicitly: `LOW`, `MEDIUM`, `HIGH`                         |
@@ -121,18 +129,18 @@ export default {
 
 ## Rules
 
-| ID                              | Severity | What it catches                                                              |
-| ------------------------------- | -------- | ---------------------------------------------------------------------------- |
-| `DROP_TABLE`                    | critical | `DROP TABLE` — irreversible data loss                                        |
-| `DROP_COLUMN`                   | critical | `ALTER TABLE … DROP COLUMN` — column data loss                               |
-| `ALTER_COLUMN_TYPE`             | high     | `ALTER … MODIFY/CHANGE COLUMN` — possible full table rewrite                 |
-| `ADD_NOT_NULL_WITHOUT_DEFAULT`  | high     | New `NOT NULL` column without a `DEFAULT` — fails on existing rows           |
-| `LARGE_UPDATE`                  | medium   | `UPDATE` without a `WHERE` clause — full-table rewrite, replication lag      |
-| `CREATE_INDEX_NO_CONCURRENT`    | medium   | Index creation that isn't `CONCURRENTLY` (Postgres) or InnoDB online (MySQL) |
-| `MISSING_FK_INDEX`              | medium   | Foreign key added without a backing index in the same migration              |
-| `TABLE_REWRITE`                 | high     | Operations that force a full table copy (charset, engine, PK, large types)   |
-| `DANGEROUS_RENAME`              | high     | Column or table rename — breaks running app code mid-deploy                  |
-| `MULTIPLE_ALTER_TABLE`          | medium   | 3+ `ALTER TABLE` on the same table in a single migration                     |
+| ID                              | Severity        | What it catches                                                                        |
+| ------------------------------- | --------------- | -------------------------------------------------------------------------------------- |
+| `DROP_TABLE`                    | critical        | `DROP TABLE` — irreversible data loss                                                  |
+| `DROP_COLUMN`                   | critical        | `ALTER TABLE … DROP COLUMN` — column data loss                                         |
+| `ALTER_COLUMN_TYPE`             | high / medium   | `ALTER … MODIFY/CHANGE COLUMN` — high for ENUM/TEXT/DECIMAL (full rebuild); medium for VARCHAR/INT/BOOLEAN (often online in MySQL InnoDB) |
+| `ADD_NOT_NULL_WITHOUT_DEFAULT`  | high            | New `NOT NULL` column without a `DEFAULT` — fails on existing rows                     |
+| `LARGE_UPDATE`                  | medium          | `UPDATE` without a `WHERE` clause — full-table rewrite, replication lag                |
+| `CREATE_INDEX_NO_CONCURRENT`    | medium          | Index creation that isn't `CONCURRENTLY` (Postgres) or InnoDB online (MySQL)           |
+| `MISSING_FK_INDEX`              | low             | Foreign key added without an explicit backing index. MySQL auto-creates one; PostgreSQL does not |
+| `TABLE_REWRITE`                 | high            | Operations that force a full table copy: charset conversion, engine change, PK change  |
+| `DANGEROUS_RENAME`              | high            | Column or table rename — breaks running app code mid-deploy                            |
+| `MULTIPLE_ALTER_TABLE`          | medium          | 5+ `ALTER TABLE` on the same table in a single migration                               |
 
 ## Architecture
 
@@ -177,7 +185,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - run: npx prismaguard analyze prisma/migrations --fail-on HIGH
+      - run: npx prismaguards analyze prisma/migrations --fail-on HIGH
 ```
 
 ### GitLab CI
@@ -186,7 +194,7 @@ jobs:
 prismaguard:
   image: node:20-alpine
   script:
-    - npx prismaguard analyze prisma/migrations --fail-on HIGH
+    - npx prismaguards analyze prisma/migrations --fail-on HIGH
 ```
 
 ## Adding a new rule
