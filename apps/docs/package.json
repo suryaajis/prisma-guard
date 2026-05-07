@@ -1,0 +1,11 @@
+{
+  "name": "@prismaguard/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PrismaGuard documentation site (placeholder)",
+  "scripts": {
+    "build": "echo 'docs build placeholder'",
+    "dev": "echo 'docs dev placeholder'",
+    "clean": "rm -rf .turbo dist"
+  }
+}

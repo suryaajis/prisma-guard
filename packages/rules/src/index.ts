@@ -1,0 +1,11 @@
+export { allRules, getRule, selectRules } from './registry.js';
+export { dropTableRule } from './rules/drop-table.js';
+export { dropColumnRule } from './rules/drop-column.js';
+export { alterColumnTypeRule } from './rules/alter-column-type.js';
+export { addNotNullWithoutDefaultRule } from './rules/add-not-null-without-default.js';
+export { largeUpdateRule } from './rules/large-update.js';
+export { createIndexNoConcurrentRule } from './rules/create-index-no-concurrent.js';
+export { missingFkIndexRule } from './rules/missing-fk-index.js';
+export { tableRewriteRule } from './rules/table-rewrite.js';
+export { dangerousRenameRule } from './rules/dangerous-rename.js';
+export { multipleAlterTableRule } from './rules/multiple-alter-table.js';

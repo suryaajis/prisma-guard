@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./packages/parser" },
+    { "path": "./packages/rules" },
+    { "path": "./packages/scoring" },
+    { "path": "./packages/formatter" },
+    { "path": "./packages/analyzer" },
+    { "path": "./packages/cli" }
+  ]
+}

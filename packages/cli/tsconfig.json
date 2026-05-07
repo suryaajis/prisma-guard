@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": ["node"],
+    // tsup invokes tsc for .d.ts emission without a tsBuildInfoFile, so
+    // --incremental from the base config triggers TS5074. We don't need
+    // incremental builds here because tsup handles compilation in-memory.
+    "incremental": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "src/__tests__/**"]
+}
