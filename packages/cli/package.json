@@ -1,5 +1,5 @@
 {
-  "name": "prismaguard",
+  "name": "prismaguards",
   "version": "0.1.0",
   "description": "Prisma migration risk analyzer — detects dangerous database operations before deployment.",
   "license": "MIT",

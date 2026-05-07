@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import chalk from 'chalk';
@@ -7,7 +8,7 @@ import {
   loadConfig,
   loadMigrations,
 } from '@prismaguard/analyzer';
-import { renderJson, renderTerminal } from '@prismaguard/formatter';
+import { renderHtml, renderJson, renderTerminal } from '@prismaguard/formatter';
 import {
   PrismaGuardError,
   RISK_LEVEL_RANK,
@@ -23,6 +24,7 @@ export interface AnalyzeCommandOptions {
   failOn?: RiskLevel;
   config?: string;
   verbose?: boolean;
+  report?: string;
 }
 
 export async function runAnalyze(
@@ -47,6 +49,16 @@ export async function runAnalyze(
       process.stdout.write(renderJson(report) + '\n');
     } else if (!silent) {
       process.stdout.write(renderTerminal(report, { verbose: options.verbose === true }));
+    }
+
+    if (options.report) {
+      const reportPath = path.isAbsolute(options.report)
+        ? options.report
+        : path.resolve(cwd, options.report);
+      await fs.writeFile(reportPath, renderHtml(report), 'utf-8');
+      if (!silent && !useJson) {
+        process.stdout.write(chalk.dim(`Report saved to ${reportPath}\n`));
+      }
     }
 
     const threshold = resolveFailThreshold(options, config);

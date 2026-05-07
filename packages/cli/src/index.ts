@@ -22,6 +22,7 @@ export function createProgram(): Command {
     .option('--fail-on <level>', 'Set the minimum risk level that triggers exit code 1 (LOW|MEDIUM|HIGH)')
     .option('-c, --config <path>', 'Path to a prismaguard config file')
     .option('--verbose', 'Include raw SQL statements in the output')
+    .option('--report <path>', 'Write an HTML report to the specified file path')
     .action(async (target: string, opts: AnalyzeCommandOptions) => {
       const code = await runAnalyze(target, normalizeOptions(opts));
       process.exit(code);
@@ -48,6 +49,7 @@ function normalizeOptions(opts: AnalyzeCommandOptions & { failOn?: string }): An
   if (validLevel !== undefined) out.failOn = validLevel;
   if (opts.config !== undefined) out.config = opts.config;
   if (opts.verbose !== undefined) out.verbose = opts.verbose;
+  if (opts.report !== undefined) out.report = opts.report;
   return out;
 }
 
